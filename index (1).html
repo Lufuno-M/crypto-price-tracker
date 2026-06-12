@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto Price Tracker</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+  body {
+    background: linear-gradient(135deg, #0f1115, #1c2128);
+    color: #e6e6e6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 5px; }
+  p.subtitle { color: #8a8f98; margin-bottom: 30px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+    width: 100%;
+    max-width: 1200px;
+  }
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .currency-toggle {
+    display: flex;
+    background: #1a1d23;
+    border: 1px solid #2a2e37;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .currency-toggle button {
+    background: transparent;
+    color: #8a8f98;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .currency-toggle button.active {
+    background: #3b82f6;
+    color: white;
+  }
+  .section-title {
+    width: 100%;
+    max-width: 1200px;
+    margin: 50px 0 16px;
+    font-size: 1.4rem;
+    border-bottom: 1px solid #2a2e37;
+    padding-bottom: 10px;
+  }
+  .news-list {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .news-item {
+    background: #1a1d23;
+    border: 1px solid #2a2e37;
+    border-radius: 10px;
+    padding: 16px 20px;
+    text-decoration: none;
+    color: #e6e6e6;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+    display: block;
+  }
+  .news-item:hover {
+    border-color: #3b82f6;
+    transform: translateX(3px);
+  }
+  .news-title { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+  .news-meta { color: #8a8f98; font-size: 0.8rem; }
+  .card {
+    background: #1a1d23;
+    border: 1px solid #2a2e37;
+    border-radius: 12px;
+    padding: 20px;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: #3b82f6;
+  }
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .card-top img { width: 28px; height: 28px; }
+  .card-top .name { font-weight: 600; font-size: 1.05rem; }
+  .card-top .symbol { color: #8a8f98; font-size: 0.85rem; text-transform: uppercase; }
+  .price { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+  .change { font-size: 0.95rem; font-weight: 600; }
+  .up { color: #22c55e; }
+  .down { color: #ef4444; }
+  .footer {
+    margin-top: 30px;
+    color: #5c6270;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+  .loading {
+    color: #8a8f98;
+    margin-top: 40px;
+  }
+  .refresh-btn {
+    margin-top: 20px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background 0.15s ease;
+  }
+  .refresh-btn:hover { background: #2563eb; }
+</style>
+</head>
+<body>
+  <h1>📈 Crypto Price Tracker</h1>
+  <p class="subtitle">Live prices via CoinGecko API</p>
+  <div class="controls">
+    <div class="currency-toggle">
+      <button id="usd-btn" class="active" onclick="setCurrency('usd')">USD</button>
+      <button id="zar-btn" onclick="setCurrency('zar')">ZAR</button>
+    </div>
+    <button class="refresh-btn" onclick="loadPrices()">Refresh Prices</button>
+  </div>
+  <div id="content" class="loading">Loading prices...</div>
+
+  <h2 class="section-title">📰 Latest News</h2>
+  <div id="news" class="news-list loading">Loading news...</div>
+
+  <div class="footer">Built by Lufuno Mulaudzi · Price data from CoinGecko · News from BBC World</div>
+
+<script>
+const coins = ["bitcoin", "ethereum", "solana", "binancecoin", "ripple", "cardano"];
+let currency = "usd";
+const symbols = { usd: "$", zar: "R" };
+
+function setCurrency(cur) {
+  currency = cur;
+  document.getElementById("usd-btn").classList.toggle("active", cur === "usd");
+  document.getElementById("zar-btn").classList.toggle("active", cur === "zar");
+  loadPrices();
+}
+
+async function loadPrices() {
+  const content = document.getElementById("content");
+  content.className = "loading";
+  content.textContent = "Loading prices...";
+
+  try {
+    const ids = coins.join(",");
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=${currency}&ids=${ids}`);
+    if (!res.ok) throw new Error("API request failed");
+    const data = await res.json();
+
+    content.className = "grid";
+    content.innerHTML = "";
+
+    data.forEach(coin => {
+      const change = coin.price_change_percentage_24h;
+      const changeClass = change >= 0 ? "up" : "down";
+      const arrow = change >= 0 ? "▲" : "▼";
+      const sym = symbols[currency];
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="card-top">
+          <img src="${coin.image}" alt="${coin.name}">
+          <div>
+            <div class="name">${coin.name}</div>
+            <div class="symbol">${coin.symbol}</div>
+          </div>
+        </div>
+        <div class="price">${sym}${coin.current_price.toLocaleString()}</div>
+        <div class="change ${changeClass}">${arrow} ${Math.abs(change).toFixed(2)}% (24h)</div>
+      `;
+      content.appendChild(card);
+    });
+  } catch (err) {
+    content.className = "loading";
+    content.textContent = "Failed to load prices. The API may be rate-limited — try refreshing in a moment.";
+  }
+}
+
+async function loadNews() {
+  const newsEl = document.getElementById("news");
+  try {
+    const feedUrl = encodeURIComponent("http://feeds.bbci.co.uk/news/world/rss.xml");
+    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${feedUrl}`);
+    if (!res.ok) throw new Error("News request failed");
+    const data = await res.json();
+
+    newsEl.className = "news-list";
+    newsEl.innerHTML = "";
+
+    data.items.slice(0, 10).forEach(item => {
+      const date = new Date(item.pubDate);
+      const a = document.createElement("a");
+      a.className = "news-item";
+      a.href = item.link;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.innerHTML = `
+        <div class="news-title">${item.title}</div>
+        <div class="news-meta">BBC World · ${date.toLocaleString()}</div>
+      `;
+      newsEl.appendChild(a);
+    });
+  } catch (err) {
+    newsEl.className = "loading";
+    newsEl.textContent = "Failed to load news right now — try refreshing in a moment.";
+  }
+}
+
+loadPrices();
+loadNews();
+</script>
+</body>
+</html>
