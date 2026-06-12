@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto Price Tracker</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+  body {
+    background: linear-gradient(135deg, #0f1115, #1c2128);
+    color: #e6e6e6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 5px; }
+  p.subtitle { color: #8a8f98; margin-bottom: 30px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+  }
+  .card {
+    background: #1a1d23;
+    border: 1px solid #2a2e37;
+    border-radius: 12px;
+    padding: 20px;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: #3b82f6;
+  }
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .card-top img { width: 28px; height: 28px; }
+  .card-top .name { font-weight: 600; font-size: 1.05rem; }
+  .card-top .symbol { color: #8a8f98; font-size: 0.85rem; text-transform: uppercase; }
+  .price { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+  .change { font-size: 0.95rem; font-weight: 600; }
+  .up { color: #22c55e; }
+  .down { color: #ef4444; }
+  .footer {
+    margin-top: 30px;
+    color: #5c6270;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+  .loading {
+    color: #8a8f98;
+    margin-top: 40px;
+  }
+  .refresh-btn {
+    margin-top: 20px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background 0.15s ease;
+  }
+  .refresh-btn:hover { background: #2563eb; }
+</style>
+</head>
+<body>
+  <h1>📈 Crypto Price Tracker</h1>
+  <p class="subtitle">Live prices via CoinGecko API</p>
+  <button class="refresh-btn" onclick="loadPrices()">Refresh Prices</button>
+  <div id="content" class="loading">Loading prices...</div>
+  <div class="footer">Built by Lufuno Mulaudzi · Data from CoinGecko</div>
+
+<script>
+const coins = ["bitcoin", "ethereum", "solana", "binancecoin", "ripple", "cardano"];
+
+async function loadPrices() {
+  const content = document.getElementById("content");
+  content.className = "loading";
+  content.textContent = "Loading prices...";
+
+  try {
+    const ids = coins.join(",");
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}`);
+    if (!res.ok) throw new Error("API request failed");
+    const data = await res.json();
+
+    content.className = "grid";
+    content.innerHTML = "";
+
+    data.forEach(coin => {
+      const change = coin.price_change_percentage_24h;
+      const changeClass = change >= 0 ? "up" : "down";
+      const arrow = change >= 0 ? "▲" : "▼";
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="card-top">
+          <img src="${coin.image}" alt="${coin.name}">
+          <div>
+            <div class="name">${coin.name}</div>
+            <div class="symbol">${coin.symbol}</div>
+          </div>
+        </div>
+        <div class="price">$${coin.current_price.toLocaleString()}</div>
+        <div class="change ${changeClass}">${arrow} ${Math.abs(change).toFixed(2)}% (24h)</div>
+      `;
+      content.appendChild(card);
+    });
+  } catch (err) {
+    content.className = "loading";
+    content.textContent = "Failed to load prices. The API may be rate-limited — try refreshing in a moment.";
+  }
+}
+
+loadPrices();
+</script>
+</body>
+</html>
