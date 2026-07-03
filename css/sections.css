@@ -1,0 +1,310 @@
+/* ==========================================================================
+   SECTIONS
+   Layout rules specific to each part of the homepage.
+   Visual language (color/type/spacing) always comes from tokens +
+   components — this file only arranges them.
+   ========================================================================== */
+
+section {
+  padding-block: var(--space-9);
+}
+
+section:first-of-type {
+  padding-top: var(--space-8);
+}
+
+/* --- Nav ------------------------------------------------------------ */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: var(--nav-height);
+  display: flex;
+  align-items: center;
+  background: rgba(11, 12, 14, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.wordmark {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.wordmark span {
+  color: var(--accent);
+}
+
+.nav-links {
+  display: flex;
+  gap: var(--space-6);
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.nav-links a {
+  transition: color var(--duration-fast) var(--ease);
+}
+
+.nav-links a:hover {
+  color: var(--ink);
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+  }
+}
+
+/* --- Hero / Morning Brief -------------------------------------------- */
+
+.hero {
+  padding-block: var(--space-9);
+}
+
+.hero-greeting {
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  max-width: 14ch;
+}
+
+.hero-sub {
+  margin-top: var(--space-3);
+  color: var(--ink-muted);
+  font-size: 1.05rem;
+  max-width: 40ch;
+}
+
+.hero-stats {
+  margin-top: var(--space-7);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-7);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+
+.hero-stat-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: var(--space-2);
+}
+
+.hero-price {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+.hero-summary {
+  margin-top: var(--space-6);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.15rem;
+  color: var(--ink-muted);
+  max-width: 62ch;
+  line-height: 1.6;
+}
+
+.hero-summary-meta {
+  margin-top: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+}
+
+/* --- Market Pulse ------------------------------------------------------ */
+
+.pulse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.pulse-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.pulse-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.pulse-price {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  margin-bottom: var(--space-2);
+}
+
+/* --- Watchlist ------------------------------------------------------ */
+
+.watchlist-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.watchlist-wrap .table th:first-child,
+.watchlist-wrap .table td:first-child {
+  padding-left: var(--space-5);
+}
+
+.watchlist-wrap .table th:last-child,
+.watchlist-wrap .table td:last-child {
+  padding-right: var(--space-5);
+  text-align: right;
+}
+
+/* --- AI Brief ------------------------------------------------------ */
+
+.ai-brief-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-7);
+}
+
+.ai-brief-text {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1.55;
+  color: var(--ink);
+  max-width: 68ch;
+}
+
+.ai-brief-meta {
+  margin-top: var(--space-5);
+  display: flex;
+  gap: var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+
+/* --- News ------------------------------------------------------ */
+
+.news-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.news-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  transition: border-color var(--duration-fast) var(--ease),
+              transform var(--duration-fast) var(--ease);
+}
+
+.news-item:hover {
+  border-color: var(--border-strong);
+  transform: translateX(2px);
+}
+
+.news-title {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.news-meta {
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+
+.news-arrow {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+/* --- Economic Calendar ------------------------------------------------------ */
+
+.calendar-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-row {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.calendar-row:last-child {
+  border-bottom: none;
+}
+
+.calendar-time {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+.calendar-event {
+  font-size: 0.95rem;
+}
+
+.calendar-region {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  margin-top: var(--space-1);
+}
+
+/* --- Footer ------------------------------------------------------ */
+
+.footer {
+  padding-block: var(--space-7);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 640px) {
+  .calendar-row {
+    grid-template-columns: 70px 1fr;
+  }
+  .calendar-row .badge {
+    grid-column: 2;
+  }
+}

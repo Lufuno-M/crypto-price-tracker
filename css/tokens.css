@@ -1,0 +1,58 @@
+/* ==========================================================================
+   DESIGN TOKENS
+   Single source of truth. Every color, type role, spacing, and radius
+   used anywhere in the app is declared here — nowhere else.
+   ========================================================================== */
+
+:root {
+  /* Color — deep graphite canvas, not pure black */
+  --canvas: #0B0C0E;
+  --surface: #16171B;
+  --surface-raised: #1D1F24;
+  --border: #24262C;
+  --border-strong: #33353D;
+
+  --ink: #EDEDEE;
+  --ink-muted: #8B8D93;
+  --ink-faint: #5C5E66;
+
+  /* Off-White-inspired safety accent — used only for live/actionable data */
+  --accent: #FF5C00;
+  --accent-dim: rgba(255, 92, 0, 0.14);
+  --accent-ink: #1A0B00;
+
+  --positive: #3FB27F;
+  --positive-dim: rgba(63, 178, 127, 0.12);
+  --negative: #E5484D;
+  --negative-dim: rgba(229, 72, 77, 0.12);
+
+  /* Type */
+  --font-display: 'Newsreader', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Radius — kept small and consistent; this is a tool, not a poster */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* Layout */
+  --max-width: 1200px;
+  --nav-height: 72px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 0.15s;
+  --duration-base: 0.25s;
+}
