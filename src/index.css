@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  --color-paper: #ffffff;
+  --color-ink: #17191c;
+  --color-ink-muted: #6f7479;
+  --color-ink-faint: #a7aaad;
+  --color-rule: #e7e6e3;
+  --color-attention: #a9601b;
+  --color-attention-soft: #f4ede3;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+}
