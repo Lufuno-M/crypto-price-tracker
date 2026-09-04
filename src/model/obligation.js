@@ -1,207 +1,203 @@
-/**
- * MarketBrain — Obligation Model
- * ------------------------------------------------------------------
- * The primary entity is not an asset. It's an obligation: a claim
- * about reality that a person has made, which reality can eventually
- * confront.
- *
- * "BTC looks strong today" is an input — a passing observation with
- * no shape reality can push against. It never becomes an Obligation.
- *
- * "BTC breaks above $120k, and I believe it signals continuation
- * because institutional flows are accelerating" is a commitment.
- * It has a CONDITION (something reality can eventually satisfy or
- * refuse) and a MECHANISM (the reasoning that makes the condition
- * meaningful, not just a coin-flip). That's what qualifies it.
- *
- * Two axes run through this model, and they never collapse into
- * each other:
- *
- *   1. The THESIS axis — Confirmed / Invalidated / Evidence Required
- *      / Withdrawn. These are facts about the claim's relationship
- *      to reality. Only a confrontation with reality can move this
- *      axis. Changing your mind does not.
- *
- *   2. The ACCOUNT axis — Neglect. This is a fact about the person's
- *      relationship to their own obligations, not about whether any
- *      given thesis was right. It is derived across the whole
- *      account, not stored on a single obligation.
- */
+// src/model/obligation.js
+//
+// Ontology layer. Source of truth: model/ontology.md, model/README.md.
+//
+// The Obligation is the primary entity. It represents something the user
+// believes, expects, or is committed to testing against reality.
+//
+// This module owns:
+//   - Obligation shape + creation validation
+//   - the reversible active <-> neglected transition
+//   - the permanence rule for confirmed/invalidated
+//
+// This module deliberately does NOT decide when confirmation or
+// invalidation is valid — that judgment belongs to resolution.js, which
+// calls the internal `applyResolutionInternal` helper exported here.
 
-// ---------------------------------------------------------------
-// Thesis states
-// ---------------------------------------------------------------
-
-export const ThesisState = Object.freeze({
-  OPEN: "open", // condition not yet met, no confrontation due
-  EVIDENCE_REQUIRED: "evidence_required", // trigger fired, mechanism unproven
-  CONFIRMED: "confirmed", // reality vindicated the mechanism, not just the trigger
-  INVALIDATED: "invalidated", // reality contradicted the claim
-  WITHDRAWN: "withdrawn", // explicitly closed by the account holder, not by reality
+export const OBLIGATION_STATUS = Object.freeze({
+  ACTIVE: 'active',
+  NEGLECTED: 'neglected',
+  CONFIRMED: 'confirmed',
+  INVALIDATED: 'invalidated',
 });
 
-// ---------------------------------------------------------------
-// Reconciliation opportunities
-// ---------------------------------------------------------------
-// A reconciliation opportunity is the system detecting that a
-// confrontation may be due. It never resolves anything on its own —
-// it only surfaces the moment. Three ways one can arise:
+const REQUIRED_FIELDS = ['asset', 'condition', 'mechanism', 'timeframe', 'importance'];
 
-export const ReconciliationType = Object.freeze({
-  TRIGGER_FIRED: "trigger_fired", // the stated condition was met
-  EVIDENCE_ARRIVED: "evidence_arrived", // new information bears on the mechanism
-  STRUCTURAL_DRIFT: "structural_drift", // accumulated change makes the mechanism worth re-asking
-});
+const TERMINAL_STATUSES = new Set([
+  OBLIGATION_STATUS.CONFIRMED,
+  OBLIGATION_STATUS.INVALIDATED,
+]);
 
-/**
- * @typedef {Object} ReconciliationOpportunity
- * @property {string} id
- * @property {string} type - ReconciliationType
- * @property {string} description - what was detected, in plain language
- * @property {string} detectedAt - ISO date
- * @property {boolean} engaged - whether the account holder has responded
- * @property {string|null} engagedAt - ISO date, or null
- * @property {string|null} resultingState - the ThesisState it led to, if any
- */
+let obligationSequence = 0;
+function nextId() {
+  obligationSequence += 1;
+  return `obl_${Date.now().toString(36)}_${obligationSequence}`;
+}
 
-/**
- * @typedef {Object} Obligation
- * @property {string} id
- * @property {string} asset - e.g. "BTC"
- * @property {string} claim - the belief statement, in the account holder's words
- * @property {string} condition - the falsifiable trigger, e.g. "Price closes above $120,000"
- * @property {string} mechanism - the reasoning that makes the claim meaningful
- * @property {string} createdAt - ISO date
- * @property {string} state - ThesisState
- * @property {Array<{state: string, changedAt: string, reason: string}>} stateHistory
- * @property {ReconciliationOpportunity[]} reconciliationOpportunities
- */
-
-/**
- * Creates a new obligation in the OPEN state. This is the only way
- * an obligation is born — there is no "draft" or "observation" that
- * silently upgrades into one. The condition and mechanism are
- * required; without both, this isn't an obligation, it's an input.
- */
-export function createObligation({ asset, claim, condition, mechanism, createdAt = new Date().toISOString() }) {
-  if (!condition || !mechanism) {
-    throw new Error(
-      "An obligation requires both a condition (what reality must do) and a mechanism (why it would mean something). Without both, this is an observation, not a commitment."
-    );
+export class ObligationValidationError extends Error {
+  constructor(message, field) {
+    super(message);
+    this.name = 'ObligationValidationError';
+    this.field = field;
   }
-  return {
-    id: crypto.randomUUID(),
-    asset,
-    claim,
-    condition,
-    mechanism,
-    createdAt,
-    state: ThesisState.OPEN,
-    stateHistory: [{ state: ThesisState.OPEN, changedAt: createdAt, reason: "Created" }],
-    reconciliationOpportunities: [],
-  };
 }
 
 /**
- * Attaches a reconciliation opportunity to an obligation. This is
- * the system saying "a confrontation may be due" — it does not
- * change the obligation's state. Only the account holder's
- * engagement with this opportunity can do that.
- */
-export function detectReconciliation(obligation, { type, description, detectedAt = new Date().toISOString() }) {
-  const opportunity = {
-    id: crypto.randomUUID(),
-    type,
-    description,
-    detectedAt,
-    engaged: false,
-    engagedAt: null,
-    resultingState: null,
-  };
-  return {
-    ...obligation,
-    reconciliationOpportunities: [...obligation.reconciliationOpportunities, opportunity],
-  };
-}
-
-/**
- * The account holder engages with a reconciliation opportunity.
- * This is the only path by which state can change — and even here,
- * the state that results is the account holder's honest read of
- * whether reality confronted the *mechanism*, not just whether the
- * *trigger* fired. A trigger firing without engagement should
- * usually resolve to EVIDENCE_REQUIRED, not straight to CONFIRMED —
- * the price crossing a level confirms the trigger, not the reasoning.
- */
-export function reconcile(obligation, opportunityId, { resultingState, reason, engagedAt = new Date().toISOString() }) {
-  const opportunities = obligation.reconciliationOpportunities.map((o) =>
-    o.id === opportunityId ? { ...o, engaged: true, engagedAt, resultingState } : o
-  );
-  return {
-    ...obligation,
-    state: resultingState,
-    stateHistory: [...obligation.stateHistory, { state: resultingState, changedAt: engagedAt, reason }],
-    reconciliationOpportunities: opportunities,
-  };
-}
-
-// ---------------------------------------------------------------
-// Account-level neglect (derived, never stored per-obligation)
-// ---------------------------------------------------------------
-
-const NEGLECT_THRESHOLD = 2; // consecutive unengaged opportunities across the account before it's a pattern, not a busy week
-
-/**
- * Neglect is not "this obligation is old." Age and dormancy are
- * judgments about the obligation's relationship to reality, which
- * this system isn't qualified to make — a thesis can sit untouched
- * for years and still be alive. Neglect is a judgment about the
- * account holder's relationship to opportunities they were actually
- * given. It only exists where a reconciliation opportunity was
- * detected and repeatedly not engaged with.
+ * Creates a new Obligation.
  *
- * Returns the current neglect status for the whole account, plus
- * which obligations are carrying the unengaged opportunities.
+ * IMPLEMENTATION ASSUMPTION: "the condition must be falsifiable" (ontology.md
+ * §2) is a semantic property this module cannot verify from a string alone.
+ * It enforces only a structural minimum (a non-trivial descriptive string).
+ * Actual falsifiability is the user's responsibility at the point of
+ * assertion. See report for why this is a boundary, not a gap.
  */
-export function getAccountNeglectStatus(obligations) {
-  const unengaged = [];
-  for (const obligation of obligations) {
-    for (const opp of obligation.reconciliationOpportunities) {
-      if (!opp.engaged) {
-        unengaged.push({ obligationId: obligation.id, opportunity: opp });
-      }
+export function createObligation(input = {}) {
+  if (typeof input !== 'object' || input === null) {
+    throw new ObligationValidationError('Obligation input must be an object');
+  }
+
+  for (const field of REQUIRED_FIELDS) {
+    const value = input[field];
+    if (value === undefined || value === null || value === '') {
+      throw new ObligationValidationError(`Missing required field: ${field}`, field);
     }
   }
-  // Sort oldest-detected first — a pattern is measured from when the
-  // opportunities started piling up, not from the most recent one.
-  unengaged.sort((a, b) => new Date(a.opportunity.detectedAt) - new Date(b.opportunity.detectedAt));
 
-  return {
-    neglected: unengaged.length >= NEGLECT_THRESHOLD,
-    unengagedCount: unengaged.length,
-    unengaged,
-  };
+  if (typeof input.asset !== 'string' || input.asset.trim() === '') {
+    throw new ObligationValidationError('asset must be a non-empty string', 'asset');
+  }
+
+  if (typeof input.condition !== 'string' || input.condition.trim().length < 3) {
+    throw new ObligationValidationError(
+      'condition must be a falsifiable statement (a descriptive, non-empty string)',
+      'condition'
+    );
+  }
+
+  if (typeof input.mechanism !== 'string' || input.mechanism.trim() === '') {
+    throw new ObligationValidationError('mechanism must be a non-empty string', 'mechanism');
+  }
+
+  if (typeof input.importance !== 'number' || Number.isNaN(input.importance)) {
+    throw new ObligationValidationError(
+      'importance must be an explicitly asserted number (it is never inferred)',
+      'importance'
+    );
+  }
+  if (input.importance < 1 || input.importance > 5) {
+    throw new ObligationValidationError('importance must be between 1 and 5', 'importance');
+  }
+
+  const timeframe = normalizeTimeframe(input.timeframe);
+
+  const createdAt = input.createdAt ? new Date(input.createdAt) : new Date();
+  if (Number.isNaN(createdAt.getTime())) {
+    throw new ObligationValidationError('createdAt must be a valid date', 'createdAt');
+  }
+
+  return Object.freeze({
+    id: input.id || nextId(),
+    asset: input.asset.trim(),
+    condition: input.condition.trim(),
+    mechanism: input.mechanism.trim(),
+    timeframe,
+    importance: input.importance,
+    status: OBLIGATION_STATUS.ACTIVE,
+    createdAt: createdAt.toISOString(),
+    // Audit trail only. Never used as a source of truth for ranking or
+    // resolution — those read `status` and `resolution` directly.
+    statusHistory: Object.freeze([
+      { status: OBLIGATION_STATUS.ACTIVE, at: createdAt.toISOString(), reason: 'created' },
+    ]),
+    resolution: null,
+  });
+}
+
+function normalizeTimeframe(timeframe) {
+  if (typeof timeframe === 'string') {
+    if (timeframe.trim() === '') {
+      throw new ObligationValidationError('timeframe must not be empty', 'timeframe');
+    }
+    return Object.freeze({ label: timeframe.trim(), expiresAt: null });
+  }
+  if (typeof timeframe === 'object' && timeframe !== null) {
+    const label = typeof timeframe.label === 'string' && timeframe.label.trim() !== ''
+      ? timeframe.label.trim()
+      : null;
+    let expiresAt = null;
+    if (timeframe.expiresAt) {
+      const d = new Date(timeframe.expiresAt);
+      if (Number.isNaN(d.getTime())) {
+        throw new ObligationValidationError('timeframe.expiresAt must be a valid date', 'timeframe');
+      }
+      expiresAt = d.toISOString();
+    }
+    if (!label && !expiresAt) {
+      throw new ObligationValidationError('timeframe must include a label or an expiresAt date', 'timeframe');
+    }
+    return Object.freeze({ label, expiresAt });
+  }
+  throw new ObligationValidationError('timeframe must be a string or an object', 'timeframe');
+}
+
+export function isTerminal(obligation) {
+  return TERMINAL_STATUSES.has(obligation.status);
 }
 
 /**
- * Obligations that currently have at least one unengaged
- * reconciliation opportunity — these are what belongs in "Needs
- * reconciliation." This is the only place urgency should be
- * computed from something the system detected, not something it
- * decided.
+ * Neglected is reversible: active <-> neglected (ontology.md §3).
+ * Neglect is a pattern fact about attention, not a truth claim, and must
+ * never be applied to a terminal Obligation.
  */
-export function obligationsNeedingReconciliation(obligations) {
-  return obligations.filter((o) => o.reconciliationOpportunities.some((opp) => !opp.engaged));
+export function markNeglected(obligation, { at = new Date(), reason = 'neglect detected' } = {}) {
+  assertNotTerminal(obligation, 'marked neglected');
+  if (obligation.status === OBLIGATION_STATUS.NEGLECTED) return obligation;
+  return transition(obligation, OBLIGATION_STATUS.NEGLECTED, at, reason);
 }
 
-export function obligationsOpen(obligations) {
-  return obligations.filter(
-    (o) => o.state === ThesisState.OPEN && !o.reconciliationOpportunities.some((opp) => !opp.engaged)
-  );
+/** Reversal: neglected -> active. Never valid from a terminal state. */
+export function markActive(obligation, { at = new Date(), reason = 're-engaged' } = {}) {
+  assertNotTerminal(obligation, 'reactivated');
+  if (obligation.status === OBLIGATION_STATUS.ACTIVE) return obligation;
+  return transition(obligation, OBLIGATION_STATUS.ACTIVE, at, reason);
 }
 
-export function obligationsResolved(obligations) {
-  return obligations.filter((o) =>
-    [ThesisState.CONFIRMED, ThesisState.INVALIDATED, ThesisState.WITHDRAWN].includes(o.state)
-  );
+function assertNotTerminal(obligation, attemptedAction) {
+  if (isTerminal(obligation)) {
+    throw new ObligationValidationError(
+      `Cannot be ${attemptedAction}: Obligation is ${obligation.status}, which is permanent`,
+      'status'
+    );
+  }
+}
+
+function transition(obligation, status, at, reason) {
+  const atIso = new Date(at).toISOString();
+  return Object.freeze({
+    ...obligation,
+    status,
+    statusHistory: Object.freeze([...obligation.statusHistory, { status, at: atIso, reason }]),
+  });
+}
+
+/**
+ * Internal seam used only by resolution.js. Not part of the public surface
+ * for general callers — obligation.js does not itself judge when
+ * confirmation/invalidation is valid.
+ */
+export function applyResolutionInternal(obligation, { status, resolution, at }) {
+  assertNotTerminal(obligation, 'resolved');
+  if (status !== OBLIGATION_STATUS.CONFIRMED && status !== OBLIGATION_STATUS.INVALIDATED) {
+    throw new ObligationValidationError('Resolution status must be confirmed or invalidated', 'status');
+  }
+  const atIso = new Date(at).toISOString();
+  return Object.freeze({
+    ...obligation,
+    status,
+    statusHistory: Object.freeze([
+      ...obligation.statusHistory,
+      { status, at: atIso, reason: 'resolved by confrontation' },
+    ]),
+    resolution: Object.freeze({ ...resolution }),
+  });
 }

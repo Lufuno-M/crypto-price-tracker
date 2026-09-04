@@ -1,27 +1,11 @@
 {
-  "name": "marketbrain",
+  "name": "marketbrain-model",
+  "version": "0.1.0",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
+  "description": "Executable MarketBrain model layer: Obligation, Evidence, Resolution, Ranking. No interface, no backend, no database.",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.1.0",
-    "autoprefixer": "^10.5.4",
-    "oxlint": "^1.79.0",
-    "postcss": "^8.5.26",
-    "tailwindcss": "^4.3.3",
-    "vite": "^8.2.2"
+    "test": "node --test test/*.test.js",
+    "cases": "node model/cases/run-all.js"
   }
 }
